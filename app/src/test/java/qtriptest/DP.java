@@ -1,63 +1,59 @@
 package qtriptest;
 
+
+import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.reflect.Method;
-import org.apache.poi.ss.usermodel.DataFormatter;
-import org.apache.poi.xssf.usermodel.XSSFCell;
-import org.apache.poi.xssf.usermodel.XSSFRow;
-import org.apache.poi.xssf.usermodel.XSSFSheet;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+
 import org.testng.annotations.DataProvider;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 
 public class DP {
-	
-	
-	
-	public static DataFormatter formatter = new DataFormatter();
-   
+    @DataProvider (name = "data-provider")
+    public Object[][] dpMethod (Method m) throws IOException{
+        int rowIndex=0;
+        int cellIndex=0;
+        List<List> outputList=new ArrayList<List>();
 
-	@DataProvider(name="qtripDataProvider")
-	public Object[][] loginData(Method m) throws IOException {
-			String filePath = System.getProperty("user.dir") + "//src//test//resources//DatasetsforQTrip.xlsx";
-			//System.out.println("inside data Provider");
+        FileInputStream excelFile = new FileInputStream(new File("src/test/resources/DatasetsforQTrip.xlsx"));
+        Workbook workbook = new XSSFWorkbook(excelFile);
+        Sheet selectedSheet = workbook.getSheet(m.getName());
+        Iterator<Row> iterator = selectedSheet.iterator();
+        while (iterator.hasNext()) {
+            Row nextRow = iterator.next();
+            Iterator<Cell> cellIterator = nextRow.cellIterator();
+             List<String> innerList=new ArrayList<String>();
+            while (cellIterator.hasNext()) {
+                Cell cell = cellIterator.next();                
+                if(rowIndex>0 && cellIndex>0)
+                {
+                    if(cell.getCellType()==CellType.STRING) {
+                        innerList.add(cell.getStringCellValue());
+                    } else if (cell.getCellType()==CellType.NUMERIC) {
+                        innerList.add( String.valueOf(cell.getNumericCellValue()));
+                    }
+                }
+                cellIndex = cellIndex+1;
+            }
+            rowIndex=rowIndex+1;
+            cellIndex=0;
+            if(innerList.size()>0)
+                outputList.add(innerList);
 
-			FileInputStream fis = new FileInputStream(filePath);
-			XSSFWorkbook wb = new XSSFWorkbook(fis);
-			XSSFSheet sh = wb.getSheet(m.getName());
-	
-			System.out.println(sh.getPhysicalNumberOfRows());
-			System.out.println(sh.getRow(0).getPhysicalNumberOfCells());
-			int RowNum = sh.getPhysicalNumberOfRows();
-			int ColNum = sh.getRow(0).getPhysicalNumberOfCells();
-	
-			String[][] xlData = new String[RowNum-1][ColNum-1];
-	
-			for (int i = 0; i < RowNum-1; i++) 
-			{
-				XSSFRow row = sh.getRow(i + 1);
-				for (int j = 1; j < ColNum; j++) 
-				{
-					if (row == null)
-						xlData[i][j-1] = "";
-					else {
-						XSSFCell cell = row.getCell(j);                 
-						if (cell == null)
-							xlData[i][j-1] = ""; 
-						else {
-							String value = formatter.formatCellValue(cell);
-							xlData[i][j-1] = value.trim();  
-							//System.out.println(xlData[i][j-1]);                          
-						}
-					}
-				}
-			}  
-			 
-			return xlData;
-		}   
+        }
+         
+        excelFile.close();
+        workbook.close();
 
-
+        String[][] stringArray = outputList.stream().map(u -> u.toArray(new String[0])).toArray(String[][]::new);
+        return stringArray;
+        
+    }
 
 }

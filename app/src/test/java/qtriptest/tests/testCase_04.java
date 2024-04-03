@@ -2,93 +2,252 @@ package qtriptest.tests;
 
 import qtriptest.DP;
 import qtriptest.DriverSingleton;
+import qtriptest.ReportSingleton;
+import java.io.File;
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.util.concurrent.TimeoutException;
+import com.relevantcodes.extentreports.ExtentReports;
+import com.relevantcodes.extentreports.ExtentTest;
+import com.relevantcodes.extentreports.LogStatus;
+import org.apache.commons.io.FileUtils;
+import org.openqa.selenium.OutputType;
+import org.openqa.selenium.TakesScreenshot;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.remote.RemoteWebDriver;
+import org.openqa.selenium.support.ui.WebDriverWait;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.testng.annotations.AfterSuite;
+import org.testng.annotations.BeforeSuite;
+import org.testng.annotations.Test;
+import org.testng.asserts.SoftAssert;
 import qtriptest.pages.HomePage;
 import qtriptest.pages.LoginPage;
+import qtriptest.pages.RegisterPage;
 import qtriptest.pages.AdventureDetailsPage;
 import qtriptest.pages.AdventurePage;
 import qtriptest.pages.HistoryPage;
-import qtriptest.pages.RegisterPage;
-import java.net.MalformedURLException;
-import org.openqa.selenium.remote.RemoteWebDriver;
-import org.testng.annotations.AfterTest;
-import org.testng.annotations.BeforeTest;
-import org.testng.annotations.Test;
+
 
 public class testCase_04 {
+    private static RemoteWebDriver driver;
+    private static ExtentReports extentReports;
+    private static ExtentTest extentTest;
+    private static SoftAssert softAssert;
 
-  static RemoteWebDriver driver;
+    public static void logStatus(String type, String message, String status) {
+        System.out.println(String.format("%s |  %s  |  %s | %s",
+        String.valueOf(java.time.LocalDateTime.now()), type, message, status));
+      }
+
+
+   @BeforeSuite(alwaysRun = true)
+   public static void Driversetup() throws MalformedURLException {
+    driver = DriverSingleton.getDriver();
+    extentReports = ReportSingleton.getInstance();
+    softAssert = new SoftAssert();
+    logStatus("driver", "Initializing driver", "Started");
+  }
+
+   @Test(dataProvider = "data-provider", dataProviderClass = DP.class, description = "Verify the reliability flow", priority = 4, groups={"Reliability Flow"})
+   public void TestCase04(String username, String password, String dataset1, String dataset2, String dataset3) throws InterruptedException, TimeoutException, IOException {
     
-    @BeforeTest(alwaysRun = true)
-    public void setup() {
-       DriverSingleton driverSingleton =  DriverSingleton.getInstanceOfSingletonBrowserClass();
-       driver = driverSingleton.getDriver();
-     
+    extentTest = extentReports.startTest("Reliability Flow Test");
+    softAssert = new SoftAssert();
+    HomePage homePage = new HomePage(driver);
+    softAssert.assertTrue(homePage.checkNavigation(), "Navigation of Home page is failed");
+    homePage.HomePageOptions("register");
+    RegisterPage registerPage = new RegisterPage(driver);
+    softAssert.assertTrue(registerPage.checkRegisterPageNavigation(),
+        "Navigation of Register page is failed");
+    registerPage.registernewuser(username, password, password, true);
+    Thread.sleep(10000);
+    LoginPage loginPage = new LoginPage(driver);
+    loginPage.performNewLoginUser(username, password);
+    WebDriverWait wait = new WebDriverWait(driver, 20);
+    wait.until(ExpectedConditions.urlToBe("https://qtripdynamic-qa-frontend.vercel.app/"));
+    softAssert.assertTrue(homePage.checkuserloggedin(), "User is unable to login");
+    Thread.sleep(5000);
+    //For Dataset1
+    String[] DS = dataset1.split(";");
+    String CityName = DS[0];
+    String AdventureName = DS[1];
+    String GuestName = DS[2];
+    String Date = DS[3];
+    String count = DS[4];
+
+    
+    WebElement autoCompleteElement = homePage.searchCity(CityName);
+    softAssert.assertNotNull(autoCompleteElement, "City search failed");
+    if (autoCompleteElement!=null) {
+        softAssert.assertTrue(autoCompleteElement.isDisplayed(),"Autocomplete not displayed for city:" + CityName);
     }
-   @Test(description ="Verify that Booking history can be viewed",priority = 4,groups = "Reliability Flow",dataProvider="qtripDataProvider",dataProviderClass = DP.class)
-     public void TestCase04(String NewUserName, String password, String dataset1, 
-     String dataset2, String dataset3) throws InterruptedException, MalformedURLException{
-         
-        String dataSetArr [][]= new String[3][5];
-        
 
-        String[] arr1 = dataset1.split(";");
-        String[] arr2 = dataset2.split(";");
-        String[] arr3 = dataset3.split(";");
-        for(int i = 0; i < arr1.length;i++){
+    String CityNamelower = CityName.toLowerCase();
 
-         dataSetArr[0][i] = arr1[i];
-         System.out.println("dataSetArr[0][i] :"+ dataSetArr[0][i]);
-         dataSetArr[1][i] = arr2[i];
-         System.out.println("dataSetArr[1][i] :"+ dataSetArr[1][i]);
-         dataSetArr[2][i] = arr3[i];
-         System.out.println("dataSetArr[2][i] :"+ dataSetArr[2][i]);
-        }
-        HomePage homePage = new HomePage(driver);
-        homePage.navigateToHomePage();
-        
-        RegisterPage registerPage = new RegisterPage(driver);
-        registerPage.navigateToRegisterPage();
-        Thread.sleep(1000);
-        registerPage.registerUser(NewUserName, password, password, true);
-       
-        LoginPage loginPage = new LoginPage(driver);
-        loginPage.navigateToLoginPage();
-        loginPage.performLogin(registerPage.lastGeneratedUserName, password);  
-        
-        for(int i = 0; i< 3;i++){
+    softAssert.assertTrue(homePage.selectCity(CityName),
+        "Failed to select city from the autocomplete");
 
-               homePage.navigateToHomePage();
-               Thread.sleep(3000);
-               homePage.searchCity(dataSetArr[i][0]);
-               homePage.isNoCityFound();
-               Thread.sleep(3000);
+    String expectedURL =
+        "https://qtripdynamic-qa-frontend.vercel.app/pages/adventures/?city=" + CityNamelower;
+    // System.out.println("Expected URL:" + expectedURL);
+    wait.until(ExpectedConditions.urlContains(expectedURL));
+    String actualURL = driver.getCurrentUrl();
+    // System.out.println("Actual URL:" + actualURL);
+    softAssert.assertTrue(actualURL.toLowerCase().contains(expectedURL.toLowerCase()),
+        "Navigation to the adventure page failed");
 
-               homePage.searchCity(dataSetArr[i][0]);
-               homePage.assertAutoCompleteText(dataSetArr[i][0]);
-               Thread.sleep(3000);
-         
-               homePage.selectCity(dataSetArr[i][0]);
-               Thread.sleep(3000);
-                  
-               AdventurePage adventurePage = new AdventurePage(driver);
-               adventurePage.selectAdventure(dataSetArr[i][1]);
-               Thread.sleep(3000);
-
-               AdventureDetailsPage advDetailPage = new AdventureDetailsPage(driver);
-               advDetailPage.BookAdventure(dataSetArr[i][2], dataSetArr[i][3], dataSetArr[i][4]);
-               advDetailPage.isBookingSuccessful();
-               //Thread.sleep(1000);
-               HistoryPage historyPage = new HistoryPage(driver);
-               historyPage.noOfReservation();
-               Thread.sleep(1000);
-               
-        }
-        homePage.logOutUser(); 
-         //}
+    
+    Thread.sleep(2000);
+    AdventurePage adventurePage = new AdventurePage(driver, CityName);
+    Thread.sleep(2000);
+    softAssert.assertTrue(adventurePage.adventureSearch(AdventureName),	"Searching the adventure failed");
+    Thread.sleep(2000);
+    softAssert.assertTrue(adventurePage.adventureClick(AdventureName), "Clicking the adventure failed");
+    AdventureDetailsPage adventureDetailsPage = new AdventureDetailsPage(driver);
+    adventureDetailsPage.setURL();
+    Thread.sleep(5000);
+    boolean isVerified = adventureDetailsPage.verifybooking();
+    System.out.println("Booking verified" +isVerified);
+     if(!isVerified){
+       softAssert.assertTrue(adventureDetailsPage.reservation(GuestName, Date, count), "Reservation failed");
+       Thread.sleep(5000);
+       softAssert.assertTrue(adventureDetailsPage.verifybooking(), "Success message not displayed");
+     }else{
+      System.out.println("User already reserved for the adventure");
      }
+    
+    
+     //For Dataset2
+    softAssert.assertTrue(homePage.checkNavigation(), "Navigation of Home page is failed");
+    String[] DS1 = dataset2.split(";");
+    String CityName1 = DS1[0];
+    String AdventureName1 = DS1[1];
+    String GuestName1 = DS1[2];
+    String Date1 = DS1[3];
+    String count1 = DS1[4];
+    Thread.sleep(2000);
+    
+    WebElement autoCompleteElement1 = homePage.searchCity(CityName1);
+    softAssert.assertNotNull(autoCompleteElement1, "City search failed");
+    if (autoCompleteElement1!=null) {
+        softAssert.assertTrue(autoCompleteElement1.isDisplayed(),"Autocomplete not displayed for city:" + CityName1);
+    }
 
-  @AfterTest()
-  public void tearDown() {
-     driver.quit();
- }
- }
+    String CityNamelower1= CityName1.toLowerCase();
+
+    softAssert.assertTrue(homePage.selectCity(CityName1),
+        "Failed to select city from the autocomplete");
+
+    String expectedURL1 =
+        "https://qtripdynamic-qa-frontend.vercel.app/pages/adventures/?city=" + CityNamelower1;
+    // System.out.println("Expected URL:" + expectedURL);
+    wait.until(ExpectedConditions.urlContains(expectedURL1));
+    String actualURL1 = driver.getCurrentUrl();
+    // System.out.println("Actual URL:" + actualURL);
+    softAssert.assertTrue(actualURL1.toLowerCase().contains(expectedURL1.toLowerCase()),
+        "Navigation to the adventure page failed");
+    Thread.sleep(2000);
+    softAssert.assertTrue(adventurePage.adventureSearch(AdventureName1),	"Searching the adventure failed");
+    Thread.sleep(2000);
+    softAssert.assertTrue(adventurePage.adventureClick(AdventureName1), "Clicking the adventure failed");
+    adventureDetailsPage.setURL();
+    Thread.sleep(5000);
+    boolean isVerified1 = adventureDetailsPage.verifybooking();
+    System.out.println("Booking verified" +isVerified1);
+     if(!isVerified1){
+       softAssert.assertTrue(adventureDetailsPage.reservation(GuestName1, Date1, count1), "Reservation failed");
+       Thread.sleep(5000);
+       softAssert.assertTrue(adventureDetailsPage.verifybooking(), "Success message not displayed");
+     }else{
+      System.out.println("User already reserved for the adventure");
+     }
+   
+
+
+     //For Dataset3
+
+     softAssert.assertTrue(homePage.checkNavigation(), "Navigation of Home page is failed");
+     String[] DS2 = dataset3.split(";");
+     String CityName2 = DS2[0];
+     String AdventureName2 = DS2[1];
+     String GuestName2 = DS2[2];
+     String Date2 = DS2[3];
+     String count2 = DS2[4];
+     Thread.sleep(2000);
+    
+     WebElement autoCompleteElement2 = homePage.searchCity(CityName2);
+     softAssert.assertNotNull(autoCompleteElement2, "City search failed");
+     if (autoCompleteElement2!=null) {
+         softAssert.assertTrue(autoCompleteElement2.isDisplayed(),"Autocomplete not displayed for city:" + CityName2);
+     }
+ 
+     String CityNamelower2= CityName2.toLowerCase();
+ 
+     softAssert.assertTrue(homePage.selectCity(CityName2),
+         "Failed to select city from the autocomplete");
+ 
+     String expectedURL2 =
+         "https://qtripdynamic-qa-frontend.vercel.app/pages/adventures/?city=" + CityNamelower2;
+     // System.out.println("Expected URL:" + expectedURL);
+     wait.until(ExpectedConditions.urlContains(expectedURL2));
+     String actualURL2 = driver.getCurrentUrl();
+     // System.out.println("Actual URL:" + actualURL);
+     softAssert.assertTrue(actualURL1.toLowerCase().contains(expectedURL1.toLowerCase()),
+         "Navigation to the adventure page failed");
+     Thread.sleep(2000);
+     softAssert.assertTrue(adventurePage.adventureSearch(AdventureName2),	"Searching the adventure failed");
+     Thread.sleep(2000);
+     softAssert.assertTrue(adventurePage.adventureClick(AdventureName2), "Clicking the adventure failed");
+     adventureDetailsPage.setURL();
+     Thread.sleep(5000);
+     boolean isVerified2 = adventureDetailsPage.verifybooking();
+     System.out.println("Booking verified" +isVerified2);
+      if(!isVerified2){
+        softAssert.assertTrue(adventureDetailsPage.reservation(GuestName2, Date2, count2), "Reservation failed");
+        Thread.sleep(5000);
+        softAssert.assertTrue(adventureDetailsPage.verifybooking(), "Success message not displayed");
+      }else{
+       System.out.println("User already reserved for the adventure");
+       extentTest.log(LogStatus.FAIL, extentTest.addScreenCapture(capture(driver)) + "Success message not displayed");
+      }
+ 
+      
+    softAssert.assertTrue(adventureDetailsPage.historyClick(), "History page not clicked");
+    Thread.sleep(5000);
+    HistoryPage historyPage = new HistoryPage(driver);
+    historyPage.setURL();
+    softAssert.assertTrue(historyPage.allBookingDisplayed(), "All bookings are not displayed");
+    Thread.sleep(2000);
+    homePage.HomePageOptions("logout");
+    wait.until(ExpectedConditions.urlToBe("https://qtripdynamic-qa-frontend.vercel.app/pages/adventures/reservations/"));
+    softAssert.assertTrue(homePage.checkNavigation(), "User is unable to logged out");
+    extentTest.log(LogStatus.PASS, "Reliability Test Passed");
+    
+
+  }
+
+  public static String capture(RemoteWebDriver driver) throws IOException{
+    //TODO: Add all the components here
+  
+  
+     File scrFile = ((TakesScreenshot) driver).getScreenshotAs(OutputType.FILE);
+  
+     File Dest = new File(System.getProperty("user.dir")+"/QKARTImages/" + System.currentTimeMillis()+ ".png");
+  
+      String errflpath = Dest.getAbsolutePath();
+      FileUtils.copyFile(scrFile, Dest);
+      return errflpath;
+    }
+
+  @AfterSuite(enabled = true)
+	
+	public static void quitDriver() throws MalformedURLException {
+		DriverSingleton.quitDriver();
+        ReportSingleton.endTest(extentTest);
+        ReportSingleton.flush();
+        logStatus("driver", "Quitting driver", "Success");
+	}  
+
+
+}

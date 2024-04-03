@@ -1,68 +1,91 @@
 package qtriptest.pages;
 
+import qtriptest.SeleniumWrapper;
+import java.util.List;
+import org.openqa.selenium.By;
+import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.remote.RemoteWebDriver;
 import org.openqa.selenium.support.FindBy;
 import org.openqa.selenium.support.PageFactory;
+import org.openqa.selenium.support.pagefactory.AjaxElementLocatorFactory;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
 public class AdventureDetailsPage {
+  private RemoteWebDriver driver;
+  private SeleniumWrapper seleniumWrapper;
+  private String url;
 
-    RemoteWebDriver driver;
+  @FindBy(xpath = "//input[@class='form-control' and @name='name']")
+  private WebElement name;
 
-    @FindBy (xpath = "(//input[@class='form-control'])[1]")
-    WebElement name_Text_Box;
+  @FindBy(xpath = "//input[@class='form-control' and @name='date']")
+  private WebElement date;
 
-    @FindBy (xpath = "(//input[@class='form-control'])[2]")
-    WebElement date_box;
+  @FindBy(xpath = "//input[@class='form-control' and @name='person']")
+  private WebElement Count;
+
+  @FindBy(xpath = "//button[@class='reserve-button']")
+  private WebElement reserve;
+
+  @FindBy(xpath = "//div[@class='alert alert-success']")
+  private WebElement success;
+
+  @FindBy(xpath = "//a[strong[text()='here']] ")
+  private WebElement history;
+
+  public AdventureDetailsPage(RemoteWebDriver driver) {
+    this.driver = driver;
+    this.seleniumWrapper = new SeleniumWrapper();
+    // AjaxElementLocatorFactory ajax = new AjaxElementLocatorFactory(driver, 10);
+    PageFactory.initElements(driver, this);
+    driver.manage().window().maximize();
+  }
+
+  public void setURL() {
+    WebDriverWait wait = new WebDriverWait(driver, 10);
+    wait.until(ExpectedConditions.urlContains("/pages/adventures/detail/"));
+    url = driver.getCurrentUrl();
+
+  }
+
+  public boolean reservation(String GuestName, String Date, String count){
+
+    System.out.println("Reserving the adventure");
+    seleniumWrapper.sendKeys(name, GuestName);
+    seleniumWrapper.sendKeys(date, Date);
+    seleniumWrapper.sendKeys(Count, count);
+    seleniumWrapper.click(reserve, driver);
+    return true;
+
     
-    @FindBy (xpath = "(//input[@class='form-control'])[3]")
-    WebElement noOfPersons_Text_Box;
+   }
 
-    @FindBy (xpath = "//button[@class='reserve-button']")
-    WebElement reserve_Button;
-
-    @FindBy (id = "reserved-banner")
-    WebElement successful_message;
-
-
-    public AdventureDetailsPage(RemoteWebDriver driver){
-        this.driver= driver;
-        PageFactory.initElements(driver, this);
-    }
-
-    public void BookAdventure(String name, String date, String noOfPersons){
-        
-        WebDriverWait wait = new WebDriverWait(driver, 10);
-        wait.until(ExpectedConditions.visibilityOfAllElements(name_Text_Box));
-
-        name_Text_Box.clear();
-        name_Text_Box.sendKeys(name);
-        selectDate(date);
-        noOfPersons_Text_Box.clear();
-        noOfPersons_Text_Box.sendKeys(noOfPersons);
-        reserve_Button.click();
-        //WebDriverWait wait = new WebDriverWait(driver, 10);
-        wait.until(ExpectedConditions.visibilityOf(successful_message));
-        
+  public boolean verifybooking() {
+    WebDriverWait wait = new WebDriverWait(driver, 10);
+    try{
+      WebElement successmessage = wait.until(ExpectedConditions.visibilityOf(success));
+      if (successmessage.isDisplayed()) {
+      System.out.println("Adventure booking was successfull");
+      return true;
 
     }
-
-    public void selectDate(String date){
-        date_box.click();
-        date_box.sendKeys(date);
+    
+      } catch(TimeoutException e){
+       System.out.println("Adventure booking was not successfull");
+     
     }
+       return false;
 
-    public Boolean isBookingSuccessful(){
-        Boolean status= false;
-        try{
-            status = successful_message.isDisplayed();
-            System.out.println(status);
-            return status;
-        } catch (Exception e) {
-            return status;
-        }
-    }
+  }
 
+  public boolean historyClick() {
+
+    System.out.println("Clicking on history link");
+    seleniumWrapper.click(history,driver);
+    return true;
+ }
+
+   
 }

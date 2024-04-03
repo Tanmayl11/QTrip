@@ -1,69 +1,79 @@
 package qtriptest.pages;
 
+import qtriptest.SeleniumWrapper;
+import org.openqa.selenium.UnhandledAlertException;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.remote.RemoteWebDriver;
 import org.openqa.selenium.support.FindBy;
 import org.openqa.selenium.support.PageFactory;
 import org.openqa.selenium.support.pagefactory.AjaxElementLocatorFactory;
+import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
-
 public class LoginPage {
+
+    private  RemoteWebDriver driver;
+    private SeleniumWrapper seleniumWrapper;
+    private String url = "https://qtripdynamic-qa-frontend.vercel.app/pages/login/";
+    private final static String LOGIN_PAGE_IDENTIFIER = "/pages/login/";
+
+  
+
+
+    @FindBy(name= "email")
     
-    RemoteWebDriver driver;
-    String url = "https://qtripdynamic-qa-frontend.vercel.app/pages/login/";
+    private WebElement emailtextbox;
 
-    @FindBy(id = "floatingInput")
-    WebElement userName_Text_Box;
-
-    @FindBy(id = "floatingPassword")
-    WebElement password_Text_Box;
+    @FindBy(name = "password")
     
-    @FindBy(xpath = "//h1")
-    WebElement loginPage_Text;
+     private WebElement passwordtextbox;
 
-    @FindBy(className = "btn-login")
-    WebElement login_Button;
+    @FindBy(xpath="//button[text()='Login to QTrip']")
+    
+     private WebElement loginButton;
 
-
+    
     public LoginPage(RemoteWebDriver driver){
         this.driver = driver;
-        PageFactory.initElements(driver,this);
-        //PageFactory.initElements(new AjaxElementLocatorFactory(driver, 20), this);
+        this.seleniumWrapper = new SeleniumWrapper();
+        AjaxElementLocatorFactory ajax = new AjaxElementLocatorFactory(driver, 10);
+        PageFactory.initElements(ajax, this);
+        driver.manage().window().maximize();
 
     }
+    
+    public boolean checkLoginPageNavigation() {
+       
+        WebDriverWait wait = new WebDriverWait(driver, 10);
+        wait.until(ExpectedConditions.urlContains(url));
+        return driver!=null && emailtextbox!=null && passwordtextbox!=null && loginButton!=null;
 
-    public void navigateToLoginPage(){
-        if(!driver.getCurrentUrl().equals(this.url)){
-            driver.get(this.url); 
-        }
     }
-
-    public Boolean performLogin(String username, String password) throws InterruptedException{
-
-        userName_Text_Box.sendKeys(username);
-        password_Text_Box.sendKeys(password);
-        login_Button.click();
-
-        Thread.sleep(6000);
-        return this.VerifyUserLoggedIn();
+   public  void performNewLoginUser(String username, String password)throws InterruptedException{
+     
+    if(username ==null || username.isEmpty() || password == null || password.isEmpty()){
+        username = RegisterPage.USER_EMAIL;
     }
-        // WebDriverWait wait = new WebDriverWait(driver, 20);
-        // wait.until(ExpectedConditions.presenceOfElementLocated(By.id("autocomplete")));
+    try{
+    performExistingUserLogin(username, password);
+   }catch(UnhandledAlertException e){
+     driver.switchTo().alert().dismiss();
+   }
+}
 
-            // try{
-            //     return this.homePage_label_message.getText().equals(message); 
-            //     //return homePage_label_message.getText().equals("Explore the world with fantastic places to venture around");
-            //    } catch(Exception e){
-            //     return false;
-            //    } 
 
-    public Boolean VerifyUserLoggedIn(){
-        
-        try{
-         return loginPage_Text.isDisplayed();
-        } catch(Exception e){
-            return false;
-        }
+   public  void performExistingUserLogin(String username, String password)throws InterruptedException{
+     
+    seleniumWrapper.sendKeys(emailtextbox, username);
+    seleniumWrapper.sendKeys(passwordtextbox, password);
+    seleniumWrapper.click(loginButton, driver);
+
+   }
+
+   public void performLogin(String username, String password, boolean isUserDynamic)throws InterruptedException{
+    if(isUserDynamic){
+        username = RegisterPage.USER_EMAIL;
+        performExistingUserLogin(username, password);
     }
+   }
 }

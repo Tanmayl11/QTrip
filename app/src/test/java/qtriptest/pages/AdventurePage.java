@@ -1,167 +1,143 @@
 package qtriptest.pages;
 
-import java.util.List;
+import qtriptest.SeleniumWrapper;
+import java.rmi.Remote;
 import java.util.ArrayList;
-//import org.apache.logging.log4j.core.util.Assert;
-import org.testng.Assert;
+import java.util.List;
+import java.util.concurrent.TimeoutException;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.remote.RemoteWebDriver;
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.support.FindBy;
 import org.openqa.selenium.support.PageFactory;
+import org.openqa.selenium.support.pagefactory.AjaxElementLocator;
+import org.openqa.selenium.support.pagefactory.AjaxElementLocatorFactory;
+import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.Select;
+import org.openqa.selenium.support.ui.WebDriverWait;
+import org.testng.Assert;
 
 public class AdventurePage {
-    RemoteWebDriver driver;
 
-    
-    @FindBy (xpath = "//div[@class='filter-bar-tile d-flex align-items-center']/select[@id ='duration-select']")
-    WebElement  duration_Dropdown;
+  
+    private  RemoteWebDriver driver;
+    private SeleniumWrapper seleniumWrapper;
+    private String url;
 
-    @FindBy (xpath = "//div[@class='filter-bar-tile d-flex align-items-center']/select[@id='category-select']")
-    WebElement category_Dropdown;
+    // @FindBy(xpath = "//select[@id='duration-select']/option[text()=' + DurationFilter + ']")
+    // private WebElement durationFilter;
 
-    @FindBy (id = "search-adventures") 
-    WebElement search_Adventure;
+    // @FindBy(xpath = "//select[@id='category-select']/option[text()=' + Category_Filter + ']")
+    // private WebElement categoryFilter;
 
-    @FindBy (xpath = "(//div[@class='ms-3'])[1]")
-    WebElement duration_Filter_Clear_Button;
+    @FindBy(xpath = "//div[@onclick='clearDuration(event)']")
+    private WebElement durationClear;
 
-    @FindBy (xpath = "(//div[@class='ms-3'])[2]")
-    WebElement category_Filter_Clear_Button;
+    @FindBy(xpath = "//div[@onclick='clearCategory(event)']")
+    private WebElement categoryClear;
 
-    @FindBy (xpath = "(//div[@class='ms-3'])[3]")
-    WebElement search_Filter_Clear_Button;
+    @FindBy(xpath="//input[@id='search-adventures']")
+    private WebElement adventureSearch;
 
-    @FindBy (xpath = "//div[@class='d-flex align-items-center']")
-    WebElement category_label;
-
-    @FindBy (xpath = "//div[@class='col-6 col-lg-3 mb-4']")
-    WebElement search_adventure_Detail;
-
-    @FindBy(xpath = "//div[@class='row']/div")
-    List<WebElement> adventureDetails;
-
-    @FindBy(xpath = "//div[@class='filter-bar-tile d-flex align-items-center']/input[@id ='search-adventures']")
-    WebElement searchAdventureTxtBox;
+    @FindBy(xpath="//a[contains(@href, '../adventures/detail/?adventure=')]")
+    private WebElement adventureClick;
 
 
-    public AdventurePage(RemoteWebDriver driver){
+    public AdventurePage(RemoteWebDriver driver, String CityName){
         this.driver = driver;
+        this.seleniumWrapper = new SeleniumWrapper();
+        this.url = "https://qtripdynamic-qa-frontend.vercel.app/pages/adventures/?city=" + CityName;
+        //AjaxElementLocatorFactory ajax = new AjaxElementLocatorFactory(driver, 10);
         PageFactory.initElements(driver, this);
+        driver.manage().window().maximize();
+
+    }
+ 
+
+    public boolean checkAdventurePageNavigation() {
+       
+        return seleniumWrapper.navigate(driver, url);
+
     }
 
+    private boolean isElementDisplayed(WebElement element) throws TimeoutException{
+        WebDriverWait wait = new WebDriverWait(driver, 30);
+        wait.until(ExpectedConditions.visibilityOf(element));
+        return true;
+    }
 
-    public void setCategoryValue(String category_value){
-        try{
-            if (verifyPresenceOfCategoryFilterDropdown()){
-                category_Dropdown.click();
-                selectCategoryFilterDropdownValue(category_value);
-                Thread.sleep(1000);
-            }
-        }catch( Exception e){
-            System.out.println("Unable to click on CategoryFilter Dropdown");
+    public void selectFilters(String DurationFilter){
+        System.out.println("Selecting the filter:" + DurationFilter);
+        WebDriverWait wait = new WebDriverWait(driver, 10);
+        WebElement duration = wait.until(ExpectedConditions.elementToBeClickable(By.id("duration-select")));
+        Select durationselect = new Select(duration);
+        durationselect.selectByVisibleText(DurationFilter);
+     }
+
+     public void selectCategory(String Category_Filter){
+        System.out.println("Selecting the filter:" + Category_Filter);
+        WebDriverWait wait = new WebDriverWait(driver, 10);
+        WebElement category = wait.until(ExpectedConditions.elementToBeClickable(By.id("category-select")));
+        Select categoryselect = new Select(category);
+        categoryselect.selectByVisibleText(Category_Filter);
+     }
+      
+
+     public boolean adventureSearch(String AdventureName){
+
+        System.out.println("Searching an adventure" +AdventureName);
+        seleniumWrapper.sendKeys(adventureSearch, AdventureName);
+        return true;
+     }
+
+     public boolean adventureClick(String AdventureName){
+        System.out.println("Clicking on adventure" + AdventureName);
+        return seleniumWrapper.click(adventureClick, driver);
+     }
+
+    public void ClearFilters() throws TimeoutException{
+        
+        if(isElementDisplayed(durationClear)){
+         seleniumWrapper.click(durationClear,driver);
         }
+          
+        if(isElementDisplayed(categoryClear)){
+            seleniumWrapper.click(categoryClear,driver);
+        }
+        
         
 
     }
-    public Boolean verifyPresenceOfCategoryFilterDropdown(){
-        Boolean status = false;
-        try{
-           status = category_Dropdown.isDisplayed();
-           return status;
-        } catch(Exception e){
-            return status;
+
+    public boolean verifyFilterData(String ExpectedFilteredResults) throws TimeoutException{
+
+        WebDriverWait wait = new WebDriverWait(driver, 10);
+        WebElement filtereddata = wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("data")));
+        List<WebElement> filtereditems = filtereddata.findElements(By.xpath("//div[@class='col-6 col-lg-3 mb-4']"));
+        int actualfiltercount = filtereditems.size();
+        System.out.println("Actual filtered data:" + actualfiltercount);
+        int expectedfiltercount = Integer.parseInt(ExpectedFilteredResults);
+        return actualfiltercount==expectedfiltercount;
+
         }
+        
 
-    }
 
-    public void  selectCategoryFilterDropdownValue(String categoryFilter){
-        try{
-            Select select = new Select(category_Dropdown);
-            List<WebElement> category = select.getOptions();
-            for(int i=1;i<= category.size(); i++){
-                if(category.get(i).getText().contains(categoryFilter)){
-                    System.out.print("category values are :" + category.get(i).getText());
-                    category.get(i).click();
-                    System.out.println(category_label.getText());
-                    Thread.sleep(1000);
-                    break;
-                }
+
+    public boolean Alldatadisplayed(){
+        List<WebElement> allRecords = driver.findElements(By.xpath("//div[@id='data']//div"));
+        for(WebElement record : allRecords){
+            if(!record.isDisplayed()){
+                return false;
             }
-        } catch (Exception e) {
-            System.out.println("Category Filter value not selected");
-            }
+        }
+         return true;
     }
-
-
-    public void setFilterValue(String duration_Filter ){
-        try { 
-            if (verifyPresenceOfDurationFilterDropdown()) {
-                duration_Dropdown.click();
-                selectDurationFilterDropdownValue(duration_Filter);
-                Thread.sleep(1000);
-            }
-        } catch( Exception e){
-            System.out.println("Not able to Select Duration Filter Dropdown");
-        }
-     }
-
-     public Boolean verifyPresenceOfDurationFilterDropdown(){
-        Boolean status = false;
-        try{
-            status = duration_Dropdown.isDisplayed();
-            return status;
-        } catch (Exception e) {
-            return status;
-        }
-     }
-
-     public void selectDurationFilterDropdownValue(String duration_Filter){
-
-        try{
-            Select select = new Select(duration_Dropdown);
-            List<WebElement> duration = select.getOptions();
-            for(int i=1; i<= duration.size(); i++) {
-                if(duration.get(i).getText().contains(duration_Filter)) {
-                    System.out.println("values of dropdown are:"+ duration.get(i).getText());
-                    duration.get(i).click();
-                    Thread.sleep(1000);
-                    break;
-                }
-            } 
-        } catch (Exception e) {
-        System.out.println("Duration filter value not selected");
-        }
-    }
-
-    public void clearFilterValue(){
-        duration_Filter_Clear_Button.click();
-        category_Filter_Clear_Button.click();
-        search_Filter_Clear_Button.click(); 
-    }
-
-
-
-        public void getResultCount(String expectedFilterResult){
-            int actualSize = adventureDetails.size();
-            int expectedSize = Integer.parseInt(expectedFilterResult);
-            Assert.assertEquals(actualSize, expectedSize,"Values does Not match");
-        }
-
-
-        public void selectAdventure(String AdventureName) throws InterruptedException{
-
-            searchAdventureTxtBox.click();
-            //WebDriverWait wait = new WebDriverWait(driver, 20);
-            //wait.until(ExpectedConditions.visibilityOf(searchAdventureTxtBox));
-            searchAdventureTxtBox.sendKeys(AdventureName);
-            Thread.sleep(2000);
-            search_adventure_Detail.click();
-    
-        }
-
-
-
-
-
 }
+
+
+
+    
+   
+ 

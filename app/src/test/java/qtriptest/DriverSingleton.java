@@ -1,44 +1,47 @@
 package qtriptest;
+
 import java.net.MalformedURLException;
 import java.net.URL;
 import org.openqa.selenium.remote.BrowserType;
 import org.openqa.selenium.remote.DesiredCapabilities;
 import org.openqa.selenium.remote.RemoteWebDriver;
-
+import org.testng.annotations.BeforeSuite;
 
 public class DriverSingleton {
 
+    private static RemoteWebDriver driver;
 
 
-    // instance of singleton class
-    private static DriverSingleton instanceOfSingletonBrowserClass = null;
 
-    private RemoteWebDriver driver;
+public static RemoteWebDriver getDriver() throws MalformedURLException{
 
-    // Constructor
-    private DriverSingleton() throws MalformedURLException {
-        final DesiredCapabilities capabilities = new DesiredCapabilities();
-        capabilities.setBrowserName(BrowserType.CHROME);
-        driver = new RemoteWebDriver(new URL("http://localhost:8082/wd/hub"), capabilities);
-        driver.manage().window().maximize();
+    if(driver==null){
+        createDriver();
+    }
+     return driver;
+}
+
+public static void logStatus(String type, String message, String status) {
+    System.out.println(String.format("%s |  %s  |  %s | %s",
+            String.valueOf(java.time.LocalDateTime.now()), type, message, status));
+}
+
+
+public static void createDriver() throws MalformedURLException {
+    
+    final DesiredCapabilities capabilities = new DesiredCapabilities();
+    capabilities.setBrowserName(BrowserType.CHROME);
+    driver = new RemoteWebDriver(new URL("http://localhost:8082/wd/hub"), capabilities);
+    logStatus("driver", "Initializing driver", "Success");
+}
+
+public static void quitDriver() throws MalformedURLException{
+    if(driver!=null){
+        driver.quit();
+        driver = null;
     }
 
-    // TO create instance of class
-    public static DriverSingleton getInstanceOfSingletonBrowserClass() {
-        if (instanceOfSingletonBrowserClass == null) {
-            try {
-                instanceOfSingletonBrowserClass = new DriverSingleton();
-            } catch (MalformedURLException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            }
-        }
-        return instanceOfSingletonBrowserClass;
-    }
+}
 
-    // To get driver
-    public RemoteWebDriver getDriver() {
-        return driver;
-    }
 
 }

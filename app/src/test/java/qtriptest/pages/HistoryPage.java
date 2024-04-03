@@ -1,11 +1,10 @@
 
 package qtriptest.pages;
 
+import qtriptest.SeleniumWrapper;
 import java.util.List;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.Alert;
-import org.openqa.selenium.NoAlertPresentException;
-import org.openqa.selenium.NoSuchElementException;
+import java.util.NoSuchElementException;
+import org.openqa.selenium.By;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.remote.RemoteWebDriver;
 import org.openqa.selenium.support.FindBy;
@@ -14,41 +13,70 @@ import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
 public class HistoryPage {
-     RemoteWebDriver driver;
-    
-    @FindBy(xpath = "//strong[contains(text(),'here')]")
-    WebElement reservation_Page;
+    private  RemoteWebDriver driver;
+    private SeleniumWrapper seleniumWrapper;
+    private String url;
 
-    @FindBy(xpath = "//table/tbody/tr/th")
-    List<WebElement> transcation_Id_Details;
+    @FindBy(xpath = "//tbody[@id='reservation-table']/tr/th[@scope='row']")
+    private WebElement transactionID;
 
-    @FindBy(className = "cancel-button")
-    WebElement cancel_Adventure_Button;
+    @FindBy(xpath ="//tbody[@id='reservation-table']//button[@class='cancel-button']")
+    private WebElement cancel;
     
     @FindBy(xpath = "//div[@id='no-reservation-banner']")
-    WebElement no_Reservation_message;
+    private WebElement message;
 
     public HistoryPage(RemoteWebDriver driver){
         this.driver = driver;
+        this.seleniumWrapper = new SeleniumWrapper();
         PageFactory.initElements(driver, this);
+        driver.manage().window().maximize();
+}
+
+    public void setURL(){
+   
+        WebDriverWait wait = new WebDriverWait(driver, 10);
+        wait.until(ExpectedConditions.urlContains("/pages/adventures/reservations/"));
+        url = driver.getCurrentUrl();
+
+   }
+
+   public boolean getTransactionID(){
+    return transactionID.isDisplayed();
+   }
+
+   public boolean cancelButton(){
+
+    WebDriverWait wait = new WebDriverWait(driver, 10);
+    WebElement cancelbutton = wait.until(ExpectedConditions.visibilityOf(cancel));
+    seleniumWrapper.click(cancelbutton,driver);
+    return false;
+   }
+
+
+   public boolean transactionIDremoved(){
+    WebDriverWait wait = new WebDriverWait(driver, 10);
+    WebElement Message = wait.until(ExpectedConditions.visibilityOf(message));
+    if(Message.isDisplayed()){
+        System.out.println("Transaction ID got removed and message is displayed");
+        return true;
     }
-
-
-
-    public List<WebElement> noOfReservation(){
-        reservation_Page.click();
-        WebDriverWait wait = new WebDriverWait(driver, 20);
-        wait.until(ExpectedConditions.visibilityOfAllElements(transcation_Id_Details));
-        return transcation_Id_Details;
+    else{
+        System.out.println("Transaction ID not got removed and message is displayed");
+        return false;
     }
+    
+}
 
-    public void cancelReservation(String transactions)throws InterruptedException{
-        for(int j=0; j< transcation_Id_Details.size();j++){
-            if(transcation_Id_Details.get(j).getText().equals(transactions)){
-                cancel_Adventure_Button.click();
-            }
-        }
+    public boolean allBookingDisplayed(){
+    List<WebElement> bookeditems = driver.findElements(By.xpath("//div[@id='reservation-table-parent']//tbody//tr"));
+    if(bookeditems.size()>0){
+      System.out.println("All bookings are displayed on the history page");
+      return true;
+    }else{
+      System.out.println("All bookings are not displayed on the history page");
+      return false;
     }
-
+   }
 
 }

@@ -1,67 +1,112 @@
 package qtriptest.tests;
 
-import qtriptest.DP;
-import qtriptest.DriverSingleton;
 import qtriptest.pages.HomePage;
 import qtriptest.pages.LoginPage;
 import qtriptest.pages.RegisterPage;
-import org.openqa.selenium.remote.RemoteWebDriver;
-import org.testng.annotations.AfterTest;
-import org.testng.annotations.BeforeTest;
-import org.testng.annotations.Test;
+import java.io.File;
+import java.io.IOException;
+import java.lang.reflect.Method;
 import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.Arrays;
+import java.util.concurrent.TimeoutException;
+import com.relevantcodes.extentreports.ExtentReports;
+import com.relevantcodes.extentreports.ExtentTest;
+import com.relevantcodes.extentreports.LogStatus;
+import org.apache.commons.io.FileUtils;
+import org.openqa.selenium.OutputType;
+import org.openqa.selenium.TakesScreenshot;
+import org.openqa.selenium.UnhandledAlertException;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.remote.BrowserType;
+import org.openqa.selenium.remote.DesiredCapabilities;
+import org.openqa.selenium.remote.RemoteWebDriver;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
+import org.testng.annotations.AfterSuite;
+import org.testng.annotations.BeforeSuite;
+import org.testng.annotations.DataProvider;
+import org.testng.annotations.Test;
+import org.testng.asserts.SoftAssert;
+import qtriptest.DP;
+import qtriptest.DriverSingleton;
+import qtriptest.ReportSingleton;
+
+public class testCase_01 {
 
 
-public class testCase_01 {  
+    private static  RemoteWebDriver driver;
+    private static ExtentReports extentReports;
+    private static ExtentTest extentTest;
+    private static SoftAssert softAssert;
+ 
+    public static void logStatus(String type, String message, String status) {
+		System.out.println(String.format("%s |  %s  |  %s | %s",
+				String.valueOf(java.time.LocalDateTime.now()), type, message, status));
+	}
 
-    static RemoteWebDriver driver;
+    @BeforeSuite( alwaysRun = true)
+	public static void Driversetup() throws MalformedURLException {
+		driver = DriverSingleton.getDriver();
+        extentReports = ReportSingleton.getInstance();
+        softAssert = new SoftAssert();
+		logStatus("driver", "Initializing driver", "Started");
+	}
 
-    //  String lastGeneratedUserName;
-    //SoftAssert sa = new SoftAssert();
 
-     // @BeforeSuite (alwaysRun = true)
-    // public void createDriver() throws  MalformedURLException{
-    //     final DesiredCapabilities capabilities = new DesiredCapabilities();
-    //     capabilities.setBrowserName(BrowserType.CHROME);
-    //     driver = new RemoteWebDriver(new URL("http://localhost:8082/wd/hub"), capabilities);
-    //     System.out.println("createDriver()");
-    //     driver.manage().window().maximize();
-    // }
-    
-    @BeforeTest(alwaysRun = true)
-    public void setup() {
-       DriverSingleton driverSingleton =  DriverSingleton.getInstanceOfSingletonBrowserClass();
-       driver = driverSingleton.getDriver();
+  
+    @Test(dataProvider = "data-provider", dataProviderClass = DP.class, description = "Verify the user login flow", priority = 1, groups ={"Login Flow"})
+    public void TestCase01(String username, String password) throws InterruptedException, TimeoutException, IOException{
      
-    }
-    @Test(description ="Verify user registration - login - logout to QTrip",priority = 1,groups="Login Flow",dataProvider="qtripDataProvider",dataProviderClass = DP.class)
-    public void TestCase01(String username, String password) throws InterruptedException, MalformedURLException{
-        
-        HomePage homePage = new HomePage(driver);
-        homePage.navigateToHomePage();
-        
-        RegisterPage registerPage = new RegisterPage(driver);
-        registerPage.navigateToRegisterPage();
-        Thread.sleep(2000);
-        registerPage.registerUser(username, password, password, true);
-       
-        LoginPage login = new LoginPage(driver);
-        login.navigateToLoginPage();
-        login.performLogin(registerPage.lastGeneratedUserName, password);  
-        
-        homePage.logOutUser();
+     extentTest = extentReports.startTest("User Login Flow Test");
+     softAssert = new SoftAssert();
+     HomePage homePage = new HomePage(driver);
+     softAssert.assertTrue(homePage.checkNavigation(), "Navigation of Home page is failed");
+     homePage.HomePageOptions("register");
+     RegisterPage registerPage = new RegisterPage(driver);
+     softAssert.assertTrue(registerPage.checkRegisterPageNavigation(), "Navigation of Register page is failed");
+     registerPage.registernewuser(username, password, password,true);
+     Thread.sleep(10000);
+     LoginPage loginPage = new LoginPage(driver);
+      try{
+     loginPage.performNewLoginUser(username, password);
+     WebDriverWait wait = new WebDriverWait(driver, 20);
+     wait.until(ExpectedConditions.urlToBe("https://qtripdynamic-qa-frontend.vercel.app/"));
+     softAssert.assertTrue(homePage.checkuserloggedin(), "User is unable to login");
+     homePage.HomePageOptions("logout");
+     wait.until(ExpectedConditions.urlToBe("https://qtripdynamic-qa-frontend.vercel.app/"));
+     softAssert.assertTrue(homePage.checkNavigation(), "User is unable to logged out");
+     extentTest.log(LogStatus.PASS, "User Login Flow Test Passed");
+    // softAssert.assertAll();
+     }catch(UnhandledAlertException alertException){
+         extentTest.log(LogStatus.FAIL, "User Login Flow Test Failed" +alertException.getMessage());
+         logStatus("exception", "Exception occurred" + alertException.getMessage(), "Failed");
+         extentTest.log(LogStatus.FAIL, extentTest.addScreenCapture(capture(driver)) + "Login Failed, reason:"+ alertException.getMessage());
+         
+     }
+
     }
 
-    @AfterTest()
-    public void tearDown() {
-        System.out.println("quit()");
-        driver.quit();
+    public static String capture(RemoteWebDriver driver) throws IOException{
+    //TODO: Add all the components here
+
+
+     File scrFile = ((TakesScreenshot) driver).getScreenshotAs(OutputType.FILE);
+
+     File Dest = new File(System.getProperty("user.dir")+"/QKARTImages/" + System.currentTimeMillis()+ ".png");
+
+      String errflpath = Dest.getAbsolutePath();
+      FileUtils.copyFile(scrFile, Dest);
+      return errflpath;
     }
 
-    //     @AfterTest()
-    //     public void quitDriver() {
-    //        System.out.println("quit()");
-    //        driver.quit();
-    //    }
-    
+
+    @AfterSuite(enabled = true)
+	
+	public static void quitDriver() throws MalformedURLException {
+		DriverSingleton.quitDriver();
+        ReportSingleton.endTest(extentTest);
+        ReportSingleton.flush();
+        logStatus("driver", "Quitting driver", "Success");
+	}
 }
